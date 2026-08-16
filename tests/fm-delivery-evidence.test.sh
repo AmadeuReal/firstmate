@@ -7,11 +7,19 @@ set -u
 TMP_ROOT=$(fm_test_tmproot fm-delivery-evidence)
 HOME_DIR="$TMP_ROOT/home"
 mkdir -p "$HOME_DIR/state"
+FAKE_BIN="$TMP_ROOT/bin"
+mkdir -p "$FAKE_BIN"
+cat > "$FAKE_BIN/gh" <<'SH'
+#!/usr/bin/env bash
+[ "$1" = pr ] && [ "$2" = view ] || exit 2
+printf '%s\n' "${FM_FAKE_SCHEMA_HEAD:-fm/schema-42}"
+SH
+chmod +x "$FAKE_BIN/gh"
 META="$HOME_DIR/state/app.meta"
 printf '%s\n' 'kind=ship' 'cross_repository=lumbu-supabase' > "$META"
 
 run_evidence() {
-  FM_HOME="$HOME_DIR" FM_STATE_OVERRIDE="$HOME_DIR/state" \
+  PATH="$FAKE_BIN:$PATH" FM_HOME="$HOME_DIR" FM_STATE_OVERRIDE="$HOME_DIR/state" \
     "$ROOT/bin/fm-delivery-evidence.sh" "$@"
 }
 
@@ -33,6 +41,13 @@ if run_evidence app lumbu-supabase main https://github.com/acme/lumbu-supabase/p
 fi
 if run_evidence app lumbu-supabase fm/schema-43 https://github.com/acme/application/pull/8 >/dev/null 2>&1; then
   fail "application PR was accepted as schema evidence"
+fi
+if run_evidence app lumbu-supabase fm/schema-43 https://github.com/acme/lumbu-supabase/pull/7 >/dev/null 2>&1; then
+  fail "conflicting schema evidence was accepted"
+fi
+printf '%s\n' 'kind=ship' 'cross_repository=lumbu-supabase' > "$HOME_DIR/state/mismatch.meta"
+if FM_FAKE_SCHEMA_HEAD=fm/schema-99 run_evidence mismatch lumbu-supabase fm/schema-42 https://github.com/acme/lumbu-supabase/pull/7 >/dev/null 2>&1; then
+  fail "schema PR with a different head branch was accepted"
 fi
 
 printf '%s\n' 'kind=ship' 'cross_repository=lumbu-supabase' > "$HOME_DIR/state/missing.meta"

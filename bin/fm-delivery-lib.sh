@@ -11,6 +11,15 @@ fm_delivery_branch_valid() {
   [[ "$branch" =~ ^fm/[A-Za-z0-9._-]+$ ]]
 }
 
+fm_delivery_schema_pr_branch_matches() {
+  local pr=$1 expected_branch=$2 actual_branch
+  fm_pr_url_parse "$pr" || return 1
+  [ "$FM_PR_PROVIDER" = github ] || return 1
+  command -v gh >/dev/null 2>&1 || return 1
+  actual_branch=$(gh pr view "$pr" --json headRefName -q .headRefName 2>/dev/null) || return 1
+  [ "$actual_branch" = "$expected_branch" ]
+}
+
 fm_delivery_requirements_check() {
   local meta=$1 required repo branch pr
   [ -f "$meta" ] || return 1
@@ -37,6 +46,10 @@ fm_delivery_requirements_check() {
   }
   [ "${FM_PR_PATH##*/}" = lumbu-supabase ] || {
     echo "error: lumbu-supabase schema delivery evidence points at $FM_PR_PATH" >&2
+    return 1
+  }
+  fm_delivery_schema_pr_branch_matches "$pr" "$branch" || {
+    echo "error: lumbu-supabase schema PR does not exist or its head branch is not $branch" >&2
     return 1
   }
 }
