@@ -178,6 +178,14 @@ Independently, `fm-spawn.sh`, `fm-send.sh`, `fm-control.sh`, and `fm-teardown.sh
 A normal primary checkout or crewmate worktree has neither signal and remains unaffected.
 The helper's header owns the exact signal detection, relocated-home limitation, test-harness bypass, and relationship to no-mistakes' HEAD-continuity guard.
 
+## Cross-repository application delivery
+
+An application brief that requires a Lumbu schema change replaces its generated `Cross-repository delivery: none` line with `Cross-repository delivery: lumbu-supabase`.
+The application task then owns durable evidence for the separately tracked schema change: `bin/fm-delivery-evidence.sh <task-id> lumbu-supabase <schema-branch> <full-pr-url>` records the schema repository, an isolated `fm/` branch, and the canonical full PR URL atomically and idempotently.
+The application PR check and teardown refuse while that evidence is incomplete, while briefs without the opt-in line retain the existing single-repository behavior.
+The schema repository remains a separate review and merge authority and is never merged by the application task.
+The script owns exact metadata mechanics, and this section owns the contract and its safety boundary.
+
 ## Two task shapes
 
 Ship tasks change projects and ship by project mode (`no-mistakes`, `direct-PR`, or `local-only`); scout tasks leave standalone investigation reports at `data/<id>/report.md` and never push.

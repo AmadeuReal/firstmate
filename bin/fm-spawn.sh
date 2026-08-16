@@ -1659,6 +1659,12 @@ delivery_rigor_rank() {  # <mode> -> 3 (most rigor) .. 1 (least); 0 = not a task
 if [ "$KIND" = ship ]; then
   PROJ_NAME=$(basename "$PROJ_ABS")
   BRIEF_MODE=$(sed -n 's/^Delivery contract: mode=\([^ ]*\).*$/\1/p' "$BRIEF" | head -n 1)
+  CROSS_REPOSITORY=$(sed -n 's/^Cross-repository delivery: *//p' "$BRIEF" | head -n 1)
+  case "$CROSS_REPOSITORY" in
+    ''|none) CROSS_REPOSITORY= ;;
+    lumbu-supabase) ;;
+    *) echo "error: unsupported cross-repository delivery contract: $CROSS_REPOSITORY" >&2; exit 1 ;;
+  esac
   if [ -z "$BRIEF_MODE" ]; then
     echo "warning: $BRIEF records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode $MODE - confirm its definition of done matches" >&2
   elif [ "$BRIEF_MODE" != "$MODE" ]; then
@@ -2647,6 +2653,7 @@ preserve_relaunch_meta() {
   echo "kind=$KIND"
   [ -z "$MODE" ] || echo "mode=$MODE"
   [ -z "$YOLO" ] || echo "yolo=$YOLO"
+  [ -z "${CROSS_REPOSITORY:-}" ] || echo "cross_repository=$CROSS_REPOSITORY"
   echo "tasktmp=$TASK_TMP"
   echo "model=${MODEL:-default}"
   echo "effort=${EFFORT:-default}"

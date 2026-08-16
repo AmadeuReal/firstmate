@@ -15,6 +15,7 @@ STATE="${FM_STATE_OVERRIDE:-$FM_HOME/state}"
 
 # shellcheck source=bin/fm-pr-lib.sh
 . "$SCRIPT_DIR/fm-pr-lib.sh"
+. "$SCRIPT_DIR/fm-delivery-lib.sh"
 # shellcheck source=bin/fm-wake-lib.sh
 . "$SCRIPT_DIR/fm-wake-lib.sh"
 
@@ -40,6 +41,7 @@ if [ ! -f "$META" ] || [ -L "$META" ] || [ "$(fm_pr_file_link_count "$META")" !=
   echo "error: task metadata is unavailable" >&2
   exit 1
 fi
+fm_delivery_requirements_check "$META" || exit 1
 
 # A prior exact merged result may have queued its durable wake immediately
 # before interruption.
