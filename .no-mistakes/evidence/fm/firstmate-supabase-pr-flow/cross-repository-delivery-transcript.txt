@@ -1,0 +1,23 @@
+$ fm-delivery-evidence.sh app lumbu-supabase fm/schema-42 https://github.com/acme/lumbu-supabase/pull/7
+recorded: lumbu-supabase schema PR https://github.com/acme/lumbu-supabase/pull/7
+
+$ persisted delivery evidence
+schema_repo=lumbu-supabase
+schema_branch=fm/schema-42
+schema_pr=https://github.com/acme/lumbu-supabase/pull/7
+
+$ fm-pr-check.sh missing ... (before schema evidence)
+error: lumbu-supabase schema delivery evidence is missing schema_repo
+refused: incomplete lumbu-supabase schema delivery evidence
+
+$ fm-teardown.sh missing (before schema evidence)
+error: no-mistakes gate agent must not drive the fleet (NO_MISTAKES_GATE set)
+refused: incomplete lumbu-supabase schema delivery evidence; task state preserved
+
+$ env -u NO_MISTAKES_GATE fm-teardown.sh missing (before schema evidence)
+error: refusing fleet lifecycle from inside a no-mistakes gate worktree (/Users/amadeum/.no-mistakes/repos/0fb2eb9bf2bb.git)
+refused: incomplete lumbu-supabase schema delivery evidence; task state preserved
+
+$ FM_GATE_REFUSE_BYPASS=1 fm-teardown.sh missing (before schema evidence)
+error: lumbu-supabase schema delivery evidence is missing schema_repo
+refused: incomplete lumbu-supabase schema delivery evidence; task state preserved
