@@ -187,6 +187,17 @@ Only a named non-default branch checked out in `FM_ROOT` is a worktree tangle.
 If another live session holds the fleet lock, both surfaces keep the alarm but switch to read-only wording with no repair command.
 Ship briefs also tell the crewmate to verify `pwd -P` and `git rev-parse --show-toplevel` before creating `fm/<id>`, then stop with a blocked status if it landed in the primary checkout.
 
+## Portable Firstmate snapshots
+
+Treehouse linked worktrees remain the full-host execution mode, where the primary checkout owns the shared Git object store and worktree administration.
+They are not portable snapshots because their `.git` pointer can resolve outside the worktree directory.
+
+When an isolated or remote execution context can expose only one snapshot root, `bin/fm-snapshot.sh materialize` creates a standalone Git checkout from a clean source root.
+The materializer records the exact source commit in the snapshot’s own Git metadata and validates that both `git-dir` and `git-common-dir` resolve inside the snapshot root.
+`bin/fm-snapshot.sh validate` is the fail-closed boundary for portable consumers and rejects missing, dirty, stale, or externally-owned Git metadata.
+The source Treehouse worktree and its lease or allocation state remain host-local provenance; they are not copied as portable Git metadata.
+The executable regression in `tests/fm-snapshot.test.sh` proves the linked-worktree failure under restricted metadata and the standalone checkout’s independence after that metadata is unavailable.
+
 ## No-mistakes gate authority boundary
 
 Firstmate's own no-mistakes gate runs agents inside a checkout that also contains the fleet-captain identity in `AGENTS.md`, so gate execution needs an authority boundary separate from ordinary crewmate worktree isolation.
