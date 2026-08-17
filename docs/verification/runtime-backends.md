@@ -59,6 +59,37 @@ Claude Code is the harness whose title no longer attributes it at all; every oth
 Codex reported `codex-aarch64-a` at 0.145.0 and `codex` at 0.146.0, and Kimi Code reported `kimi-code` as its foreground `comm` at 0.29.1 and `kimi` at 0.31.1, so these identities move between ordinary patch releases in both directions.
 That is the evidence for treating any single process name as a surface under vendor control rather than a stable contract.
 
+### Codex profile variants
+
+The installed `codex-personal` and `codex-martos` wrappers were reverified on 2026-08-17.
+Both wrappers report codex-cli 0.147.0 and exec the same installed Codex binary while selecting separate `CODEX_HOME` directories.
+The `codex-martos` profile is a distinct crewmate/scout harness value, not an alias for `codex` or `codex-personal`.
+
+```sh
+command -v codex-personal
+codex-personal --version
+command -v codex-martos
+codex-martos --version
+```
+
+Observed output:
+
+```text
+/Users/amadeum/.local/bin/codex-personal
+codex-cli 0.147.0
+/Users/amadeum/.local/bin/codex-martos
+codex-cli 0.147.0
+```
+
+The current wrapper contract is:
+
+```text
+codex-personal -> CODEX_HOME=/Users/amadeum/Library/Application Support/Codex Profiles/personal/codex-home
+codex-martos -> CODEX_HOME=/Users/amadeum/Library/Application Support/Codex Profiles/martos/codex-home
+```
+
+`fm-spawn.sh` resolves `codex-martos` from `PATH` before endpoint creation and passes the shared Codex model and reasoning-effort flags without changing the selected profile.
+
 The crewmate-only Muse Code 0.1.0-R708.1 adapter was verified separately on 2026-08-05 against tmux on macOS arm64.
 Its installed `muse-bin-0.1.0-R708.1` foreground identity classified `alive`, while `musescore`, `amuse`, `muse-binary`, and `muse-bind` remained ambiguous in the portable regression.
 [`muse.md`](muse.md#process-identity) owns the artifact identity and launcher evidence for that verification.

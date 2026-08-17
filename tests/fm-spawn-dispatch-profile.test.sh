@@ -76,6 +76,11 @@ SH
   chmod +x "$fakebin/timeout" "$fakebin/cursor-agent"
   make_spawn_pi_probe "$fakebin" pi
   make_spawn_pi_probe "$fakebin" pi-signed
+  cat > "$fakebin/codex-martos" <<'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+  chmod +x "$fakebin/codex-martos"
   printf '%s\n' "$fakebin"
 }
 
@@ -468,6 +473,64 @@ test_codex_omits_invalid_max_effort() {
   pass "codex omits unsupported max effort instead of passing a bad config value"
 }
 
+test_codex_martos_resolves_distinct_executable_and_threads_codex_profile() {
+  local rec id out status launch
+  id=profile-codex-martos-z4a
+  rec=$(make_spawn_case profile-codex-martos codex-martos "$id")
+  read_case_record "$rec"
+
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" \
+    "$id" "$PROJ_DIR" --model gpt-5 --effort high)
+  status=$?
+  expect_code 0 "$status" "codex-martos spawn with profile flags should succeed"
+  assert_contains "$out" "spawned $id harness=codex-martos" \
+    "spawn did not preserve the codex-martos profile identity"
+  assert_meta_profile "$HOME_DIR/state/$id.meta" codex-martos gpt-5 high
+  launch=$(cat "$LAUNCH_LOG")
+  assert_contains "$launch" "'$FAKEBIN_DIR/codex-martos' --model 'gpt-5' -c 'model_reasoning_effort=\"high\"' --dangerously-bypass-approvals-and-sandbox" \
+    "codex-martos did not use its PATH-resolved executable with Codex flags"
+  assert_not_contains "$launch" "codex-personal" \
+    "codex-martos must not normalize to codex-personal"
+  pass "codex-martos preserves its profile identity and uses its PATH-resolved Codex executable"
+}
+
+test_codex_martos_missing_executable_refuses_before_metadata() {
+  local rec id out status
+  id=profile-codex-martos-missing-z4b
+  rec=$(make_spawn_case profile-codex-martos-missing codex-martos "$id")
+  read_case_record "$rec"
+  rm "$FAKEBIN_DIR/codex-martos"
+
+  out=$(PATH=/usr/bin:/bin run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" \
+    "$id" "$PROJ_DIR")
+  status=$?
+  expect_code 1 "$status" "codex-martos without a PATH executable should refuse"
+  assert_contains "$out" "codex-martos executable not found on PATH" \
+    "missing codex-martos should name the exact profile"
+  assert_absent "$HOME_DIR/state/$id.meta" \
+    "missing codex-martos executable should refuse before metadata"
+  pass "codex-martos missing executable is refused before endpoint or metadata creation"
+}
+
+test_codex_martos_secondmate_refuses_as_non_primary_profile() {
+  local rec id sm out status
+  id=profile-codex-martos-secondmate-z4c
+  rec=$(make_spawn_case profile-codex-martos-secondmate codex-martos "$id")
+  read_case_record "$rec"
+  sm="$CASE_DIR/secondmate-home"
+  make_seeded_secondmate_home "$sm" "$id"
+
+  out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" \
+    "$id" "$sm" --secondmate --harness codex-martos)
+  status=$?
+  expect_code 1 "$status" "codex-martos secondmate launch should refuse"
+  assert_contains "$out" "codex-martos is a verified crewmate/scout profile only" \
+    "codex-martos secondmate refusal should name its non-primary boundary"
+  assert_absent "$HOME_DIR/state/$id.meta" \
+    "codex-martos secondmate refusal should happen before metadata"
+  pass "codex-martos refuses secondmate launches because it is not a primary supervision harness"
+}
+
 test_grok_threads_model_and_reasoning_effort() {
   local rec id out status launch
   id=profile-grok-z5
@@ -840,6 +903,9 @@ test_active_dispatch_profile_allows_raw_launch_command
 test_claude_threads_model_and_effort
 test_codex_threads_model_and_effort
 test_codex_omits_invalid_max_effort
+test_codex_martos_resolves_distinct_executable_and_threads_codex_profile
+test_codex_martos_missing_executable_refuses_before_metadata
+test_codex_martos_secondmate_refuses_as_non_primary_profile
 test_grok_threads_model_and_reasoning_effort
 test_grok_omits_invalid_max_reasoning_effort
 test_grok_omits_invalid_xhigh_reasoning_effort
