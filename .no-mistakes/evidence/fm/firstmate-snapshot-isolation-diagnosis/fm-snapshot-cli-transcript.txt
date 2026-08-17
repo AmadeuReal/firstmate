@@ -1,0 +1,7 @@
+ok - linked Treehouse-shaped worktree remains usable in full-host mode
+ok - standalone snapshot owns git-dir and git-common-dir and records the exact source commit
+ok - portable validation rejects linked metadata outside the snapshot root
+ok - restricted metadata sandbox reproduces the linked-worktree Git failure
+ok - standalone snapshot remains valid when linked metadata is unavailable
+
+exit=0
