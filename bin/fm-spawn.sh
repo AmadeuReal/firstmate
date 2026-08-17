@@ -104,7 +104,7 @@
 #   profile consultation. A --secondmate spawn is exempt and resolves the SECONDMATE
 #   harness (config/secondmate-harness -> config/crew-harness -> own), so the
 #   secondmate-vs-crewmate split is DURABLE across every respawn (recovery,
-#   /updatefirstmate, restart). A bare adapter name (claude|codex|codex-personal|opencode|pi|pi-signed|grok|kimi|
+#   /updatefirstmate, restart). A bare adapter name (claude|codex|codex-personal|codex-martos|opencode|pi|pi-signed|grok|kimi|
 #   overrides it for this spawn (either kind). A non-flag string containing
 #   whitespace is treated as a RAW launch command - the escape hatch for verifying
 #   new adapters. For pi and pi-signed, fm-spawn resolves the selected executable
@@ -151,6 +151,7 @@
 #   Launch templates live in launch_template() below; placeholders replaced before launch:
 #     __BRIEF__    absolute path to data/<task-id>/brief.md
 #     __PIBIN__    quoted concrete Pi-family executable path resolved from PATH
+#     __CODEXBIN__ quoted concrete codex-martos executable path resolved from PATH
 #     __PITUIMODE__ optional --tui-mode regular when that executable advertises it
 #     __TURNEND__  absolute path to state/<task-id>.turn-ended (for harnesses whose
 #                  turn-end signal rides the launch command, e.g. codex -c notify=[...])
@@ -439,7 +440,7 @@ spawn_remote_secondmate() {
     harness=$("$FM_ROOT/bin/fm-harness.sh" secondmate)
   fi
   case "$harness" in
-    claude|codex|opencode|pi|pi-signed|grok|kimi|cursor) ;;
+    claude|codex|codex-personal|codex-martos|opencode|pi|pi-signed|grok|kimi|cursor) ;;
     *)
       fm_lock_release "$registry_lock" || true
       fm_lock_release "$SPAWN_TASK_LOCK" || true
@@ -1046,7 +1047,7 @@ if [ "$RELAUNCH" -eq 1 ]; then
   }
 elif [ "$KIND" = secondmate ]; then
   case "${POS[1]:-}" in
-    ''|claude|codex|codex-personal|opencode|pi|pi-signed|grok|kimi|muse)
+    ''|claude|codex|codex-personal|codex-martos|opencode|pi|pi-signed|grok|kimi|muse)
       ARG3=${POS[1]:-}
       ;;
     *' '*)
@@ -1075,6 +1076,19 @@ shell_quote() {
 }
 
 resolve_pi_executable() {
+  local candidate dir
+  candidate=$(type -P -- "$1" 2>/dev/null) || return 1
+  [ -x "$candidate" ] || return 1
+  case "$candidate" in
+    /*) printf '%s\n' "$candidate" ;;
+    *)
+      dir=$(cd "$(dirname "$candidate")" 2>/dev/null && pwd -P) || return 1
+      printf '%s/%s\n' "$dir" "$(basename "$candidate")"
+      ;;
+  esac
+}
+
+resolve_codex_executable() {
   local candidate dir
   candidate=$(type -P -- "$1" 2>/dev/null) || return 1
   [ -x "$candidate" ] || return 1
@@ -1124,6 +1138,13 @@ launch_template() {
         printf '%s' 'codex-personal __MODELFLAG____EFFORTFLAG__--dangerously-bypass-approvals-and-sandbox "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
       else
         printf '%s' 'codex-personal __MODELFLAG____EFFORTFLAG__--dangerously-bypass-approvals-and-sandbox -c "notify=[\"bash\",\"-c\",\"touch __TURNEND__\"]" "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
+      fi
+      ;;
+    codex-martos)
+      if [ "$kind" = secondmate ]; then
+        printf '%s' '__CODEXBIN__ __MODELFLAG____EFFORTFLAG__--dangerously-bypass-approvals-and-sandbox "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
+      else
+        printf '%s' '__CODEXBIN__ __MODELFLAG____EFFORTFLAG__--dangerously-bypass-approvals-and-sandbox -c "notify=[\"bash\",\"-c\",\"touch __TURNEND__\"]" "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
       fi
       ;;
     opencode) printf '%s' 'OPENCODE_CONFIG_CONTENT='\''{"permission":{"*":"allow"}}'\'' opencode __MODELFLAG__--prompt "$(__OPINPUT__ encode launch-brief < __BRIEF__)"' ;;
@@ -1233,8 +1254,18 @@ if [ "$KIND" = secondmate ] && [ "$HARNESS" = muse ]; then
   echo "error: muse is a verified crewmate/scout adapter only and cannot run a secondmate; it has no primary supervision protocol. Select a harness verified for secondmates." >&2
   exit 1
 fi
+if [ "$KIND" = secondmate ] && [ "$HARNESS" = codex-martos ]; then
+  echo "error: codex-martos is a verified crewmate/scout profile only and cannot run a secondmate; it is not a primary supervision harness. Select a harness verified for secondmates." >&2
+  exit 1
+fi
 
 case "$HARNESS" in
+  codex-martos)
+    CODEX_BIN=$(resolve_codex_executable "$HARNESS") || {
+      echo "error: $HARNESS executable not found on PATH; install it or select a different verified harness" >&2
+      exit 1
+    }
+    ;;
   pi|pi-signed)
     PI_BIN=$(resolve_pi_executable "$HARNESS") || {
       echo "error: $HARNESS executable not found on PATH; install it or select a different verified harness" >&2
@@ -1368,7 +1399,7 @@ model_flag_for_harness() {
   local harness=$1 model=$2
   [ -n "$model" ] && [ "$model" != default ] || return 0
   case "$harness" in
-    claude|codex|codex-personal|opencode|pi|pi-signed|grok|kimi|muse)
+    claude|codex|codex-personal|codex-martos|opencode|pi|pi-signed|grok|kimi|muse)
       printf -- '--model %s ' "$(shell_quote "$model")"
       ;;
   esac
@@ -1383,7 +1414,7 @@ effort_flag_for_harness() {
         low|medium|high|xhigh|max) printf -- '--effort %s ' "$(shell_quote "$effort")" ;;
       esac
       ;;
-    codex|codex-personal)
+    codex|codex-personal|codex-martos)
       # The installed codex config schema uses model_reasoning_effort, and the
       # bundled model catalog advertises low|medium|high|xhigh. Omit max rather
       # than passing an unsupported value.
@@ -2731,11 +2762,12 @@ LAUNCH=${LAUNCH//__PIWATCH__/$sq_piwatch}
 LAUNCH=${LAUNCH//__OPINPUT__/$sq_opinput}
 case "$HARNESS" in
   pi|pi-signed) LAUNCH=${LAUNCH//__PIBIN__/"$(shell_quote "$PI_BIN")"} ;;
+  codex-martos) LAUNCH=${LAUNCH//__CODEXBIN__/"$(shell_quote "$CODEX_BIN")"} ;;
   cursor) LAUNCH=${LAUNCH//__CURSORBIN__/"$(shell_quote "$CURSOR_BIN")"} ;;
 esac
 LAUNCH=${LAUNCH//__WORKTREE__/$sq_worktree}
 case "$HARNESS" in
-  claude|codex|opencode|pi|pi-signed|grok|kimi|muse)
+  claude|codex|codex-martos|opencode|pi|pi-signed|grok|kimi|muse)
     LAUNCH="env -u CURSOR_AGENT -u CURSOR_INVOKED_AS $LAUNCH"
     ;;
 esac

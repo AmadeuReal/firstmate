@@ -430,6 +430,27 @@ test_harness_switch_moves_the_record_and_clears_prior_wiring() {
   pass "fm-control relaunch: switching harness is one ordinary relaunch, and the old wiring goes with the old agent"
 }
 
+test_relaunch_preserves_codex_martos_profile_identity() {
+  local dir out rc
+  dir=$(new_case switch-martos rl4m)
+  add_ship_task "$dir" rl4m claude
+  cat > "$dir/fakebin/codex-martos" <<'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+  chmod +x "$dir/fakebin/codex-martos"
+  printf 'codex-martos' > "$dir/fake/becomes"
+  out=$(run_control "$dir" rl4m relaunch --harness codex-martos --note "switching to martos profile"); rc=$?
+  expect_code 0 "$rc" "a codex-martos harness switch should succeed"$'\n'"$out"
+  assert_contains "$out" "harness=codex-martos from=claude" \
+    "relaunch should preserve the codex-martos profile name"
+  [ "$(meta_field "$dir" rl4m harness)" = codex-martos ] \
+    || fail "relaunch should record codex-martos rather than a generic Codex name"
+  assert_grep "codex-martos" "$dir/fake/literal" \
+    "relaunch should launch the codex-martos executable"
+  pass "fm-control relaunch preserves the distinct codex-martos profile identity"
+}
+
 test_harness_switch_does_not_carry_the_old_profile_axes() {
   local dir out rc
   dir=$(new_case profile rl5)
@@ -1319,6 +1340,7 @@ test_disabled_relaunch_clears_prior_trace_context
 test_relaunch_appends_the_progress_note_to_the_instructions
 test_relaunch_requires_a_note_for_a_ship_task
 test_harness_switch_moves_the_record_and_clears_prior_wiring
+test_relaunch_preserves_codex_martos_profile_identity
 test_harness_switch_does_not_carry_the_old_profile_axes
 test_harness_switch_resolves_a_prefixed_recorded_harness
 test_prefixed_recorded_harness_requires_explicit_replacement
