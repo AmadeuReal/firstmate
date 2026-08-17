@@ -154,7 +154,7 @@ fm_control_interrupt_ack_source() {  # <harness>
     # after an interrupt was measured as variable - sometimes seconds, sometimes
     # not within 20 - so a cancellation claim built on it would be unreliable.
     # Normal turn completion is prompt, which is what the busy fold depends on.
-    claude|codex|opencode|pi|pi-signed|grok|kimi|cursor) printf 'none' ;;
+    claude|codex|codex-personal|codex-martos|opencode|pi|pi-signed|grok|kimi|cursor) printf 'none' ;;
     *) return 1 ;;
   esac
 }
