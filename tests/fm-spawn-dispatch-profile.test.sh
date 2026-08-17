@@ -489,6 +489,16 @@ test_codex_martos_resolves_distinct_executable_and_threads_codex_profile() {
   launch=$(cat "$LAUNCH_LOG")
   assert_contains "$launch" "'$FAKEBIN_DIR/codex-martos' --model 'gpt-5' -c 'model_reasoning_effort=\"high\"' --dangerously-bypass-approvals-and-sandbox" \
     "codex-martos did not use its PATH-resolved executable with Codex flags"
+  assert_contains "$launch" "notify=" \
+    "codex-martos worker launch did not preserve the turn-end notification"
+  assert_contains "$launch" "$id.turn-ended" \
+    "codex-martos worker launch did not target its own turn-end marker"
+  assert_contains "$launch" "encode launch-brief" \
+    "codex-martos worker launch did not pass the existing launch brief"
+  assert_contains "$launch" "$id/brief.md" \
+    "codex-martos worker launch did not target its own launch brief"
+  assert_not_contains "$launch" " codex " \
+    "codex-martos must not fall back to the generic codex executable"
   assert_not_contains "$launch" "codex-personal" \
     "codex-martos must not normalize to codex-personal"
   pass "codex-martos preserves its profile identity and uses its PATH-resolved Codex executable"

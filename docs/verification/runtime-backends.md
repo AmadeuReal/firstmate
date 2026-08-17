@@ -81,6 +81,25 @@ codex-cli 0.147.0
 codex-cli 0.147.0
 ```
 
+A real TTY-backed smoke of the Martos wrapper was run on 2026-08-18 with the following command.
+
+```sh
+smoke_socket="fm-codex-martos-smoke-$$"
+smoke_session="fm-codex-martos-smoke"
+tmux -L "$smoke_socket" new-session -d -s "$smoke_session" -n worker -- /bin/zsh -lc '/Users/amadeum/.local/bin/codex-martos exec --help; sleep 3'
+sleep 1
+tmux -L "$smoke_socket" capture-pane -p -S -200 -t "$smoke_session:worker" | rg -m 3 'Run Codex|Usage: codex exec|Commands:'
+tmux -L "$smoke_socket" kill-server
+```
+
+Observed output from the TTY-backed pane was:
+
+```text
+Run Codex non-interactively
+Usage: codex exec [OPTIONS] [PROMPT]
+Commands:
+```
+
 The current wrapper contract is:
 
 ```text

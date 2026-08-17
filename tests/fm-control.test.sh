@@ -277,6 +277,8 @@ test_harness_family_resolution() {
       || fail "'$recorded' should resolve to the $want adapter"
     [ "$got" = "$want" ] || fail "'$recorded' should resolve to $want, got '$got'"
   done
+  [ "$(fm_control_interrupt_ack_source codex-martos)" = none ] \
+    || fail "codex-martos should use the Codex no-ack interrupt contract"
   fm_control_harness_family someagent \
     && fail "an unrecognized launch command must not be guessed into an adapter family"
   fm_control_harness_family '' \
