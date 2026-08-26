@@ -147,6 +147,14 @@ Storing evidence in the repo publishes each run's test artifacts to the orphan `
 That branch shares no history with code branches, so evidence never enters a pushed feature branch or the default branch; the worktree's `.no-mistakes/` stays local and CI rejects tracked entries under that path.
 It does not set `commands.test` to a complete `tests/*.test.sh` walk.
 See [CONTRIBUTING.md](../CONTRIBUTING.md) for the firstmate-specific local test policy and entry points.
+
+### No-mistakes concurrency guard
+
+Use `bin/fm-nm-run.sh start <worktree> --intent "..."` or `retry` as the guarded launch surface.
+The guard reads `config/no-mistakes-max-concurrency`, defaulting to `1`, and `FM_NO_MISTAKES_MAX_CONCURRENCY` overrides it for one invocation.
+An active no-mistakes run is never interrupted or duplicated.
+A workspace-capacity failure is retained as a task-local blocker and requires a captain decision before another attempt.
+Inspect the authoritative current state with `no-mistakes axi status`; inspect historical usage with `no-mistakes stats` only, because historical usage is not remaining workspace-credit capacity.
 Portable shard evidence and coverage rules are in [fm-test-portable-shards.md](fm-test-portable-shards.md); [herdr-backend.md](herdr-backend.md#destructive-lab-safety) owns the real-Herdr lane's isolation boundary, and [runtime-backends.md](verification/runtime-backends.md#herdr) owns active evidence.
 
 ## Captain Preferences (data/captain.md / data/captain-shared.md)
